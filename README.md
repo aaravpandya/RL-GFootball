@@ -5,10 +5,9 @@ The goal of this training was to figure out if there is a way to make RL models 
 Also provided is a file [core.py](https://github.com/aaravpandya/RL-GFootball/blob/master/core.py) which implements self-attention layer used in the transformer architecture. This is the same block used in the starcraft paper from deepmind. However, adding this block makes the network very complex and heavy, and will require high computation power and time. We were only able to train on empty goal and with goalkeeper scenarios on this block. Future aim is to train it on 3_vs_1 and see its performance on 5_vs_3 scenarios.
 ## Training results
 
-3_vs_1 from scratch
-
-![3_vs_1](https://github.com/aaravpandya/RL-GFootball/blob/master/gifs/3_v_1.gif)
-
+| ![3_vs_1](https://github.com/aaravpandya/RL-GFootball/blob/master/gifs/3_v_1.gif) |  
+|--|
+| 3_vs_1 from scratch | 
 
 | ![5_vs_3_scratch](https://github.com/aaravpandya/RL-GFootball/blob/master/gifs/5_v_3_scratch.gif) | ![5_vs_3_transfer](https://github.com/aaravpandya/RL-GFootball/blob/master/gifs/5_v_3_transfer.gif) |
 |--|--|
