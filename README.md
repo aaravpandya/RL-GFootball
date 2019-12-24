@@ -13,4 +13,6 @@ Also provided is a file [core.py](https://github.com/aaravpandya/RL-GFootball/bl
 |--|--|
 | 5_vs_3 from scratch | 5_vs_3 transfer learned  |
 
-
+| ![](https://github.com/aaravpandya/RL-GFootball/blob/master/Graphs/1.png) | ![](https://github.com/aaravpandya/RL-GFootball/blob/master/Graphs/2.jpg) | ![](https://github.com/aaravpandya/RL-GFootball/blob/master/Graphs/3.jpg) |
+|--|--|--|
+|  |  |  |
