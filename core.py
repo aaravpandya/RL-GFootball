@@ -12,8 +12,6 @@ from stable_baselines3 import PPO2, A2C, logger
 from stable_baselines3.bench import monitor
 import gfootball.env as football_env
 import numpy as np
-# from keras_layer_normalization import LayerNormalization
-import numpy as np
 
 
 def residual_block(inputs: torch.Tensor, depth: int) -> torch.Tensor:
@@ -78,28 +76,6 @@ def mhdpa(v, k, q, num_heads):
 #   output = LayerNorma1lization()(output)
   return output
 
-# def nature_cnn(scaled_images, **kwargs):
-#     """
-#     CNN from Nature paper.
-#     :param scaled_images: (TensorFlow Tensor) Image input placeholder
-#     :param kwargs: (dict) Extra keywords parameters for the convolutional layers of the CNN
-#     :return: (TensorFlow Tensor) The CNN output layer
-#     """
-#     activ = tf.nn.relu
-#     layer_1 = activ(conv(scaled_images, 'c1', n_filters=32, filter_size=8, stride=4, init_scale=np.sqrt(2), **kwargs))
-#     layer_2 = activ(conv(layer_1, 'c2', n_filters=64, filter_size=4, stride=2, init_scale=np.sqrt(2), **kwargs))
-#     layer_3 = activ(conv(layer_2, 'c3', n_filters=64, filter_size=3, stride=1, init_scale=np.sqrt(2), **kwargs))
-#     layer_3 = conv_to_fc(layer_3)
-#     return activ(linear(layer_3, 'fc1', n_hidden=512, init_scale=np.sqrt(2)))
-# def residual_block(inputs):
-# 	depth = inputs.get_shape()[-1].value
-# 	out = tf.nn.relu(inputs)
-# 	out = tf.keras.layers.Conv2D(depth,3,1,padding='same')(out)
-# 	out = tf.nn.relu(out)
-# 	out = tf.keras.layers.Conv2D(depth,3,1,padding='same')(out)
-# 	return out + inputs
-
-
 def build_impala_cnn(unscaled_images, depths=[16, 32, 32], **conv_kwargs):
 	"""
 	Model used in the paper "IMPALA: Scalable Distributed Deep-RL with
@@ -133,27 +109,9 @@ def build_impala_cnn(unscaled_images, depths=[16, 32, 32], **conv_kwargs):
 		return out
 
 	out = torch.cast(unscaled_images, torch.float32) / 255.
-	# y = tf.keras.layers.Conv2D(32, 4, 2, padding='same')(out)
-	# y = tf.keras.layers.BatchNormalization()(y)
-	# y = tf.keras.layers.ReLU()(y)
-	# print(y)
-	# y = residual_block(y, 32)
-	# y = tf.keras.layers.BatchNormalization()(y)
-	# y = tf.keras.layers.ReLU()(y)
-	# y = tf.keras.layers.MaxPool2D()(y)
-	# print(y)
-	# y = tf.keras.layers.Conv2D(54, 4, 2, padding='same')(y)
-	# y = tf.keras.layers.BatchNormalization()(y)
-	# y = tf.keras.layers.ReLU()(y)
-	# print(y)
-	# y = residual_block(y, 54)
-	# y = tf.keras.layers.BatchNormalization()(y)
-	# out = tf.keras.layers.ReLU()(y)
-	# print(out)
+	
 	for depth in depths:
 		out = conv_sequence(out, depth)
-	# out = tf.keras.layers.ConvLSTM2D(32,2,1,'same1')
-	# out = tf.keras.layers.Conv2D(54,3,1,'same')(out)
 	
 	out = torch.reshape(
 		out, (torch.shape(out)[0], out.shape[1]*out.shape[2], out.shape[3]))

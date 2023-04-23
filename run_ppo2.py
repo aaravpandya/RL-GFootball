@@ -1,40 +1,22 @@
-# coding=utf-8
-# Copyright 2019 Google LLC
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 """Runs football_env on OpenAI's ppo2."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-import multiprocessing
 import os
 
-from baselines import logger
-from baselines.bench import monitor
-from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-from baselines.ppo2 import ppo2
 import gfootball.env as football_env
-from gfootball.examples import models  
+from gfootball.examples import models
+from stable_baselines3 import PPO, logger
+from stable_baselines3.bench import monitor
+from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
+
 # import os
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-from tensorflow.python.util import deprecation
-deprecation._PRINT_DEPRECATION_WARNINGS = False
-import tensorflow as tf
 
 # warnings.filterwarnings('ignore')
-flags = tf.app.flags
-FLAGS = tf.app.flags.FLAGS
+# TODO: where are these flags in pytorch
+flags = {}
+FLAGS = {}
+
 
 flags.DEFINE_string('level', 'academy_5_vs_3_with_keeper',
                     'Defines type of problem being solved')
@@ -72,49 +54,43 @@ flags.DEFINE_string('load_path', "/home/aarav/5_vs_3_with_keeper_from_scratch/ch
 
 
 def create_single_football_env(seed):
-  """Creates gfootball environment."""
-  env = football_env.create_environment(
-      env_name=FLAGS.level, stacked=('stacked' in FLAGS.state),
-      rewards=FLAGS.reward_experiment,
-      logdir=logger.get_dir(),
-      enable_goal_videos=FLAGS.dump_scores and (seed == 0),
-      enable_full_episode_videos=FLAGS.dump_full_episodes and (seed == 0),
-      render= True and (seed == 0),
-      dump_frequency=50 if FLAGS.render and seed == 0 else 0)
-  env = monitor.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(),
-                                                               str(seed)))
-  return env
+	"""Creates gfootball environment."""
+	env = football_env.create_environment(
+		env_name=FLAGS.level, stacked=('stacked' in FLAGS.state),
+		rewards=FLAGS.reward_experiment,
+		logdir=logger.get_dir(),
+		enable_goal_videos=FLAGS.dump_scores and (seed == 0),
+		enable_full_episode_videos=FLAGS.dump_full_episodes and (seed == 0),
+		render= True and (seed == 0),
+		dump_frequency=50 if FLAGS.render and seed == 0 else 0)
+	env = monitor.Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(),
+																str(seed)))
+	return env
 
 
 def train():
-  """Trains a PPO2 policy."""
-  ncpu = multiprocessing.cpu_count()
-  config = tf.ConfigProto(allow_soft_placement=True,
-                          intra_op_parallelism_threads=ncpu,
-                          inter_op_parallelism_threads=ncpu)
-  config.gpu_options.allow_growth = True
-  tf.Session(config=config).__enter__()
-  logger.configure("~/5_vs_3_with_keeper_from_scratch_2")
-  vec_env = SubprocVecEnv([
-      (lambda _i=i: create_single_football_env(_i))
-      for i in range(1)
-  ], context=None)
+	"""Trains a PPO2 policy."""
+	logger.configure("~/5_vs_3_with_keeper_from_scratch_2")
+	vec_env = SubprocVecEnv([
+		(lambda _i=i: create_single_football_env(_i))
+		for i in range(1)
+	], context=None)
 
-  ppo2.learn(network=FLAGS.policy,
-             total_timesteps=FLAGS.num_timesteps,
-             env=vec_env,
-             seed=FLAGS.seed,
-             nsteps=FLAGS.nsteps,
-             nminibatches=FLAGS.nminibatches,
-             noptepochs=FLAGS.noptepochs,
-             gamma=FLAGS.gamma,
-             ent_coef=FLAGS.ent_coef,
-             lr=FLAGS.lr,
-             log_interval=1,
-             save_interval=FLAGS.save_interval,
-             cliprange=FLAGS.cliprange,
-             load_path=FLAGS.load_path,
-             )
+	PPO.learn(network=FLAGS.policy,
+				total_timesteps=FLAGS.num_timesteps,
+				env=vec_env,
+				seed=FLAGS.seed,
+				nsteps=FLAGS.nsteps,
+				nminibatches=FLAGS.nminibatches,
+				noptepochs=FLAGS.noptepochs,
+				gamma=FLAGS.gamma,
+				ent_coef=FLAGS.ent_coef,
+				lr=FLAGS.lr,
+				log_interval=1,
+				save_interval=FLAGS.save_interval,
+				cliprange=FLAGS.cliprange,
+				load_path=FLAGS.load_path,
+				)
 
 if __name__ == '__main__':
-  train()
+  	train()
