@@ -4,6 +4,7 @@ contourpy==1.0.7
 cycler==0.11.0
 filelock==3.12.0
 fonttools==4.39.3
+gfootball==2.10.2
 gym==0.21.0
 importlib-metadata==4.13.0
 Jinja2==3.1.2
