@@ -1,17 +1,12 @@
-import multiprocessing
 import os
 # import gym
 import torch
 import torch.nn as nn
-from stable_baselines3.a2c.utils import conv, linear, conv_to_fc
-from stable_baselines3.common.policies import ActorCriticPolicy, register_policy, nature_cnn
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
-from stable_baselines3.common.cmd_util import make_atari_env
-from stable_baselines3.common.vec_env import VecFrameStack
-from stable_baselines3 import PPO2, A2C, logger
-from stable_baselines3.bench import monitor
+from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3 import PPO2, logger
+from stable_baselines3.common import monitor
 import gfootball.env as football_env
-import numpy as np
 
 
 def residual_block(inputs: torch.Tensor, depth: int) -> torch.Tensor:

@@ -4,9 +4,8 @@ from __future__ import absolute_import, division, print_function
 import os
 
 import gfootball.env as football_env
-from gfootball.examples import models
 from stable_baselines3 import PPO, logger
-from stable_baselines3.bench import monitor
+from stable_baselines3.common import monitor
 from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 # import os
