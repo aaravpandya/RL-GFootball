@@ -12,7 +12,7 @@ import tempfile
 import os
 import torch
 import torch.nn as nn
-tempfile.tempdir = '/scratch/ap7641/hpmlproject/temp'
+
 from gfootball.env.wrappers import Simple115StateWrapper
 import ray
 from ray.runtime_env import RuntimeEnv
@@ -41,11 +41,13 @@ class FootballGym(gymnasium.Env):
         super(FootballGym, self).__init__()
         env_name = "academy_empty_goal_close"
         rewards = "scoring,checkpoints"
-        render = False
+        render = True
+        logdir = '.'
         if config is not None:
             env_name = config.get("env_name", env_name)
             rewards = config.get("rewards", rewards)
             render = config.get('render', render)
+            logdir = config.get('logdir', logdir)
         print("Initializing env " + env_name)
         self.observation_space = Box(low=-np.inf, high=np.inf, shape=(115,), dtype=np.float32)
         self.env = create_environment(
@@ -54,11 +56,11 @@ class FootballGym(gymnasium.Env):
             representation="simple115v2",
             rewards = rewards,
             write_goal_dumps=False,
-            write_full_episode_dumps=render,
+            write_full_episode_dumps=False,
             render=render,
             write_video=render,
             dump_frequency=1,
-            logdir="/scratch/ap7641/hpmlproject/footballreplays",
+            logdir=logdir,
             extra_players=None,
             number_of_left_players_agent_controls=1,
             number_of_right_players_agent_controls=0)  
@@ -89,55 +91,36 @@ class FootballGym(gymnasium.Env):
     
     def step(self, action):
         obs, reward, done, truncated, info = self.env.step([action])
-        return obs, float(reward), done, truncated, info
+        return obs, float(reward), done, False, info
     def close(self):
         self.env.close()
-    
+
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.tune.logger import pretty_print
 from tqdm.auto import tqdm
+            
+def main(args):
+    tempfile.tempdir = args.tmpdir
+    checkpoint = ray.rllib.algorithms.algorithm.Algorithm.from_checkpoint(args.checkpoint)
+    policy = check.get_policy()
+    env = FootballGym(config={'env_name':scenario_name, 'render':True, 'logdir': args.logdir})
+    obs = env.reset()[0]
+    with tqdm() as pbar:
+        while(True):
+            action = policy.compute_single_action(obs)
+            obs, reward, done, truncated, info = env.step(action[0])
+            if(done):
+                break
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Distributed RL Training")
 
-# algo = (
-#     PPOConfig()
-#     .rollouts(num_rollout_workers=1, num_envs_per_worker=1)
-#     .resources(num_gpus=1)
-#     .environment(env=FootballGym, env_config ={'env_name':scenario_name, 'render':True})
-#     .evaluation(evaluation_num_workers=1)
-#     .build()
-# )
-# algo.restore('/scratch/ap7641/hpmlproject/checkpoint_002000')
-check = ray.rllib.algorithms.algorithm.Algorithm.from_checkpoint('/scratch/ap7641/hpmlproject/checkpoint_002000')
-policy = check.get_policy()
-env = FootballGym(config={'env_name':scenario_name, 'render':True})
-obs = env.reset()[0]
-with tqdm() as pbar:
-    while(True):
-        action = policy.compute_single_action(obs)
-        obs, reward, done, truncated, info = env.step(action[0])
-        if(done):
-            break
-    
-# algo.evaluate()
-# run = wandb.init(
-#     # Set the project where this run will be logged
-#     project="HPML-Project",
-#     # Track hyperparameters and run metadata
-#     config={
-#         'n_envs':8,
-#         'n_steps':100,
-#         'env':scenario_name,
-#         'policy':'FCN'
-#         })
-# for i in tqdm(range(2000)):
-#     result = algo.train()
-#     learner_stats = result['info']['learner']['default_policy']['learner_stats']
-#     learner_stats['num_env_steps_sampled'] = result['num_env_steps_sampled']
-#     learner_stats['num_env_steps_trained'] = result['num_env_steps_trained']
-#     learner_stats['episode_reward_mean'] = result['episode_reward_mean']
-#     learner_stats['episodes_total'] = result['episodes_total']
-#     wandb.log(learner_stats)
-#     if i % 100 == 0:
-#         checkpoint_dir = algo.save(checkpoint_dir="\scratch\ap7641\hpmlproject\checkpoints")
-        
-# checkpoint_dir = algo.save(checkpoint_dir="\scratch\ap7641\hpmlproject\checkpoints")
-# print(f"Checkpoint saved in directory {checkpoint_dir}")
+    parser.add_argument("--scenario", type=int, choices=range(1, 12), default = 6,
+                        help="Scenario (1-11)")
+    parser.add_argument("--checkpoint", default=None, required=True,
+                        help="Checkpoint directory (directory path or None)")
+    parser.add_argument("--tmpdir", default=None, required=True,
+                        help="Temporary directory to store your renders")
+    parser.add_argument("--logdir", default=None, required=True,
+                        help="Log dir to get your output renders")
+    args = parser.parse_args()
+    main(args)

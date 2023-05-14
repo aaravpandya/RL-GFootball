@@ -15,12 +15,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.models import ModelCatalog
-tempfile.tempdir = '/scratch/ap7641/hpmlproject/temp'
 from gfootball.env.wrappers import Simple115StateWrapper
-os.environ["DISPLAY"] = ""
 import ray
 from ray.runtime_env import RuntimeEnv
-ray.init(runtime_env=RuntimeEnv(env_vars={"DISPLAY": ""}))
+ray.init()
 
 scenarios = {0: "academy_empty_goal_close",
              1: "academy_empty_goal",
@@ -34,7 +32,7 @@ scenarios = {0: "academy_empty_goal_close",
              9: "academy_counterattack_hard",
              10: "academy_single_goal_versus_lazy",
              11: "11_vs_11_kaggle"}
-scenario_name = scenarios[6]
+
 
 class FootballGym(gymnasium.Env):
     spec = None
@@ -45,9 +43,13 @@ class FootballGym(gymnasium.Env):
         super(FootballGym, self).__init__()
         env_name = "academy_empty_goal_close"
         rewards = "scoring,checkpoints"
+        render = False
+        logdir = "."
         if config is not None:
             env_name = config.get("env_name", env_name)
             rewards = config.get("rewards", rewards)
+            render = config.get('render', render)
+            logdir = config.get('logdir', logdir)
         print("Initializing env " + env_name)
         self.observation_space = Box(low=-np.inf, high=np.inf, shape=(115,), dtype=np.float32)
         self.env = create_environment(
@@ -57,10 +59,10 @@ class FootballGym(gymnasium.Env):
             rewards = rewards,
             write_goal_dumps=False,
             write_full_episode_dumps=False,
-            render=False,
-            write_video=False,
+            render=render,
+            write_video=render,
             dump_frequency=1,
-            logdir="/scratch/ap7641/hpmlproject/footballreplays",
+            logdir=logdir,
             extra_players=None,
             number_of_left_players_agent_controls=1,
             number_of_right_players_agent_controls=0)  
@@ -107,20 +109,20 @@ class TorchCustomModel(TorchModelV2, nn.Module):
         self.input_size = 115
         self.output_size = 19
         self.d_model = 115
-        self.fc0 = nn.Linear(115, 1024)
-        self.attention1 = nn.MultiheadAttention(embed_dim=1024, num_heads=32)
-        self.attention2 = nn.MultiheadAttention(embed_dim=1024, num_heads=32)
-        self.attention3 = nn.MultiheadAttention(embed_dim=1024, num_heads=32)
-        self.fc1 = nn.Linear(1024, 1024)
-        self.fc2 = nn.Linear(1024, 1024)
-        self.fc3 = nn.Linear(1024, 1024)  # Added an additional feedforward layer
-        self.fc4 = nn.Linear(1024, 19)
-        self.value_branch = nn.Linear(1024, 1)
+        self.fc0 = nn.Linear(115, 115)
+        self.attention1 = nn.MultiheadAttention(embed_dim=115, num_heads=23)
+        self.attention2 = nn.MultiheadAttention(embed_dim=115, num_heads=23)
+        self.attention3 = nn.MultiheadAttention(embed_dim=115, num_heads=23)
+        self.fc1 = nn.Linear(115, 115)
+        self.fc2 = nn.Linear(115, 115)
+        self.fc3 = nn.Linear(115, 115)  # Added an additional feedforward layer
+        self.fc4 = nn.Linear(115, 19)
+        self.value_branch = nn.Linear(115, 1)
 
     def forward(self, input_dict, state, seq_lens):
         input_dict["obs"] = input_dict["obs"].float()
-        x = self.fc0(input_dict["obs"])
-        x = self.fc1(x)
+        x = F.relu(self.fc0(input_dict["obs"]))
+        x = F.relu(self.fc1(x))
         x = x.unsqueeze(0)
         x, _ = self.attention1(x, x, x)
         x = x.squeeze(0)
@@ -132,8 +134,8 @@ class TorchCustomModel(TorchModelV2, nn.Module):
         x = x.unsqueeze(0)
         x, _ = self.attention3(x, x, x)
         x = x.squeeze(0)
-        logits = self.fc4(x)
-        value_estimate = self.value_branch(x)
+        logits = F.relu(self.fc4(x))
+        value_estimate = F.relu(self.value_branch(x))
 
         self._value_out = value_estimate.squeeze(1)
         return logits, []
@@ -143,43 +145,84 @@ class TorchCustomModel(TorchModelV2, nn.Module):
 ModelCatalog.register_custom_model(
         "my_model", TorchCustomModel
     )
-    
-    
 
-algo = (
-    PPOConfig()
-    .rollouts(num_rollout_workers=16, num_envs_per_worker=2)
-    .resources(num_gpus=torch.cuda.device_count(), num_learner_workers = 16)
-    .environment(env=FootballGym, env_config ={'env_name':scenario_name})
-    .training(
-            model={
-                "custom_model": "my_model",
-                "vf_share_layers": True,
-            }
+
+def main(args):
+    tempfile.tempdir = args.tmpdir
+    scenario_name = scenarios[args.scenario]
+    if(args.algorithm == 'PPO'):
+        algo = ( PPOConfig()
+            .rollouts(num_rollout_workers=args.num_cpus, num_envs_per_worker=4)
+            .resources(num_gpus=torch.cuda.device_count(), num_learner_workers = 16)
+            .environment(env=FootballGym, env_config ={'env_name':scenario_name, 'logdir':logdir})
+            .training(
+                    model={
+                        "custom_model": "my_model",
+                        "vf_share_layers": True,
+                    },
+                    train_batch_size = 4000
+                )
+            .build()
         )
-    .build()
-)
-#algo.restore('/scratch/ap7641/hpmlproject/AttentionCheckpointsScene8/checkpoint_000201')
-run = wandb.init(
+    elif (args.algorithm == 'IMPALA'):
+        config = ImpalaConfig()
+        config = config.resources(num_gpus = torch.cuda.device_count(), num_learner_workers = 4, num_gpus_per_learner_worker = args.num_gpus)
+        config = config.rollouts(num_rollout_workers=args.num_cpus, num_envs_per_worker=1)
+        config = config.environment(env=FootballGym, env_config ={'env_name':scenario_name, 'logdir':logdir})
+        config = config.training(
+                    model={
+                        "custom_model": "my_model",
+                        "vf_share_layers": True
+                    }
+                , train_batch_size=4000)
+        algo = config.build()
+    run = wandb.init(
     # Set the project where this run will be logged
     project="HPML-Project",
     # Track hyperparameters and run metadata
     config={
-        'n_envs':14,
+        'n_envs':args.num_cpus,
         'n_steps':100,
         'env':scenario_name,
         'policy':'Attention'
         })
-for i in tqdm(range(2000)):
-    result = algo.train()
-    learner_stats = result['info']['learner']['default_policy']['learner_stats']
-    learner_stats['num_env_steps_sampled'] = result['num_env_steps_sampled']
-    learner_stats['num_env_steps_trained'] = result['num_env_steps_trained']
-    learner_stats['episode_reward_mean'] = result['episode_reward_mean']
-    learner_stats['episodes_total'] = result['episodes_total']
-    wandb.log(learner_stats)
-    if i % 100 == 0:
-        checkpoint_dir = algo.save(checkpoint_dir="/scratch/ap7641/hpmlproject/AttentionCheckpointsScene8Large/")
-        
-checkpoint_dir = algo.save(checkpoint_dir="/scratch/ap7641/hpmlproject/AttentionCheckpointsScene8Large")
-print(f"Checkpoint saved in directory {checkpoint_dir}")
+    
+    if(args.resume is not None):
+        algo.restore(args.resume)
+
+    for i in tqdm(range(args.num_iterations)):
+        result = algo.train()
+        learner_stats = result['info']['learner']['default_policy']['learner_stats']
+        learner_stats['num_env_steps_sampled'] = result['num_env_steps_sampled']
+        learner_stats['num_env_steps_trained'] = result['num_env_steps_trained']
+        learner_stats['episode_reward_mean'] = result['episode_reward_mean']
+        learner_stats['episodes_total'] = result['episodes_total']
+        wandb.log(learner_stats)
+        if i % 100 == 0:
+            checkpoint_dir = algo.save(checkpoint_dir=args.checkpoint)
+            
+    checkpoint_dir = algo.save(checkpoint_dir=args.checkpoint)
+    print(f"Checkpoint saved in directory {checkpoint_dir}")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Distributed RL Training")
+
+    parser.add_argument("--scenario", type=int, choices=range(1, 12), default = 6,
+                        help="Scenario (1-11)")
+    parser.add_argument("--num-cpus", type=int, required=True,
+                        help="Number of CPUs")
+    parser.add_argument("--num-gpus", type=int, required=True,
+                        help="Number of GPUs per learner worker")
+    parser.add_argument("--algorithm", choices=["PPO", "IMPALA"], required=True,
+                        help="Algorithm (PPO or IMPALA)")
+    parser.add_argument("--num-iterations", type=int, required=True,
+                        help="Number of iterations")
+    parser.add_argument("--resume", default=None,
+                        help="Resume (directory path or None)")
+    parser.add_argument("--checkpoint", default=None, required=True,
+                        help="Checkpoint directory (directory path or None)")
+    parser.add_argument("--logdir", default=None, required=True,
+                        help="Log dir to get your output renders")
+    parser.add_argument("--tmpdir", default=None, required=True,
+                        help="Temporary directory to store your renders if rendering is enabled")
+    args = parser.parse_args()
+    main(args)
