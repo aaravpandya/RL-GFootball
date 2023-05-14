@@ -1,5 +1,5 @@
 
-## Build steps (for NYU HPC Greene, your mileage may vary)
+## Run steps
 1. Get a working singularity container.
 2. Git clone and install "https://github.com/aaravpandya/football" (IMPORTANT: Do not use the pip package. This repo is updated with the latest gymnasium api)
 3. Install .yml in the repo with conda 
