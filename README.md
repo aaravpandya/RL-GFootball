@@ -19,17 +19,3 @@
 7. The checkpoints are stored in your checkpoint directory. Irrespective of the algorithm, you can run evaluate.py to see your model working in the env. 
 
       7.1 Run `unset DISPLAY` to run gfootball in HEADLESS mode before running evaluate. If you have display connected, this is not required.
-
-# Training GFootball environment
-
-
-
-## Training results
-
-| ![3_vs_1](https://github.com/aaravpandya/RL-GFootball/blob/master/gifs/3_v_1.gif) |  
-|--|
-| 3_vs_1 from scratch | 
-
-| ![5_vs_3_scratch](https://github.com/aaravpandya/RL-GFootball/blob/master/gifs/5_v_3_scratch.gif) | ![5_vs_3_transfer](https://github.com/aaravpandya/RL-GFootball/blob/master/gifs/5_v_3_transfer.gif) |
-|--|--|
-| 5_vs_3 from scratch | 5_vs_3 transfer learned  |
