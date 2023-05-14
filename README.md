@@ -1,8 +1,29 @@
+
+## Run steps
+1. Get a working singularity container.
+2. Git clone and install "https://github.com/aaravpandya/football" (IMPORTANT: Do not use the pip package. This repo is updated with the latest gymnasium api)
+3. Install .yml in the repo with conda 
+
+	   conda env create -n ENVNAME --file ENV.yml
+4. Fix this issue in your Ray installation. As of writing this README, the commit solving the issue has not been released ( "https://github.com/ray-project/ray/issues/34159")
+5. Running PPO version -
+            
+      5.1 Run train.py with the correct arguments. Its that simple.
+6. Running IMPALA version - 
+
+      6.1 Start Ray cluster node with ` ray start --head --port=6379`
+
+      6.2 Using the the IP address and port number in the output, start worker nodes using `ray start --address='<IP Address>:<Port Number>'` . For good results use atleast 6 nodes with 16 cores each. Have atleast 2 GPUs across the cluster.
+
+      6.3 Run train.py with algorithm=IMPALA to start running the training. 
+7. The checkpoints are stored in your checkpoint directory. Irrespective of the algorithm, you can run evaluate.py to see your model working in the env. 
+
+      7.1 Run `unset DISPLAY` to run gfootball in HEADLESS mode before running evaluate. If you have display connected, this is not required.
+
 # Training GFootball environment
 
-Part of my undergraduate core project. Trained GFootball environment on different tasks. Trained on 3_vs_1 first from scratch. Then trained 5_vs_3 on parameters from 3_vs_1 and scratch. While there was no difference in the time taken to achieve more than 95% performance, the transfer learned model learned passing from the previous model while the model trained from scratch opted to dribble. 
-The goal of this training was to figure out if there is a way to make RL models learn concepts rather than overfit on the environment.
-Also provided is a file [core.py](https://github.com/aaravpandya/RL-GFootball/blob/master/core.py) which implements self-attention layer used in the transformer architecture. This is the same block used in the starcraft paper from deepmind. However, adding this block makes the network very complex and heavy, and will require high computation power and time. We were only able to train on empty goal and with goalkeeper scenarios on this block. Future aim is to train it on 3_vs_1 and see its performance on 5_vs_3 scenarios.
+
+
 ## Training results
 
 | ![3_vs_1](https://github.com/aaravpandya/RL-GFootball/blob/master/gifs/3_v_1.gif) |  
@@ -12,7 +33,3 @@ Also provided is a file [core.py](https://github.com/aaravpandya/RL-GFootball/bl
 | ![5_vs_3_scratch](https://github.com/aaravpandya/RL-GFootball/blob/master/gifs/5_v_3_scratch.gif) | ![5_vs_3_transfer](https://github.com/aaravpandya/RL-GFootball/blob/master/gifs/5_v_3_transfer.gif) |
 |--|--|
 | 5_vs_3 from scratch | 5_vs_3 transfer learned  |
-
-| ![](https://github.com/aaravpandya/RL-GFootball/blob/master/Graphs/1.png) | ![](https://github.com/aaravpandya/RL-GFootball/blob/master/Graphs/2.jpg) | ![](https://github.com/aaravpandya/RL-GFootball/blob/master/Graphs/3.jpg) |
-|--|--|--|
-|  |  |  |
